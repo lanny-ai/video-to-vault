@@ -1,0 +1,28 @@
+{
+  "name": "buildroom-tools",
+  "description": "AI Momentum Labs Build Room tools for Claude Code. Private plugins for Build Room members.",
+  "owner": {
+    "name": "AI Momentum Labs",
+    "email": "lanny@aimomentumlabs.com"
+  },
+  "plugins": [
+    {
+      "name": "watch-to-vault-plugin",
+      "source": "./plugins/watch-to-vault-plugin",
+      "description": "Full-treatment video analysis into Obsidian notes (frames + transcript + on-screen capture)",
+      "version": "1.0.0",
+      "author": {
+        "name": "AI Momentum Labs"
+      }
+    },
+    {
+      "name": "channel-to-vault-plugin",
+      "source": "./plugins/channel-to-vault-plugin",
+      "description": "Bulk YouTube channel ingest into Obsidian notes (transcript-only, skips Shorts)",
+      "version": "1.0.0",
+      "author": {
+        "name": "AI Momentum Labs"
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "name": "watch-to-vault-plugin",
+  "description": "Full-treatment video analysis: download, extract frames, read every frame with vision, transcribe, and write a structured Obsidian note. For videos you want deeply indexed.",
+  "version": "1.0.0"
+}

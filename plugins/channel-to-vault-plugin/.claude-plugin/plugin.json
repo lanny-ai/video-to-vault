@@ -1,0 +1,5 @@
+{
+  "name": "channel-to-vault-plugin",
+  "description": "Bulk-ingest a YouTube channel into Obsidian with transcript-only structured notes. Skips Shorts automatically. For channels you want fully cataloged.",
+  "version": "1.0.0"
+}
