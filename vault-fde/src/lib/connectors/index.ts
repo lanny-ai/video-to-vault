@@ -17,6 +17,12 @@ export interface ConnectorContext {
   /** Outputs of completed steps, keyed by step id. */
   values: Record<string, Record<string, unknown>>;
   mode: "shadow" | "live" | "eval";
+  /**
+   * Present when a human already approved (and possibly edited) this step's
+   * draft at its gate. What the human approved is what executes; connectors
+   * must consume it verbatim instead of rebuilding their own draft.
+   */
+  approvedDraft?: Record<string, unknown>;
 }
 
 export interface ConnectorResult {
@@ -42,6 +48,19 @@ export class ConnectorError extends Error {
 
 export type Connector = (step: Step, ctx: ConnectorContext) => Promise<ConnectorResult>;
 
+/**
+ * An approved gate draft wraps the actual action as `proposed` (plus any
+ * human `correction`). Unwrap it so the step's output is the action itself.
+ */
+export function approvedPayload(draft: Record<string, unknown>): Record<string, unknown> {
+  if (draft.proposed && typeof draft.proposed === "object" && !Array.isArray(draft.proposed)) {
+    const payload = { ...(draft.proposed as Record<string, unknown>) };
+    if (typeof draft.correction === "string") payload.correction = draft.correction;
+    return payload;
+  }
+  return draft;
+}
+
 // ---------------------------------------------------------------------------
 
 const DecisionSchema = z.object({
@@ -51,9 +70,21 @@ const DecisionSchema = z.object({
   reasons: z.array(z.string()),
 });
 
-/** Judgment steps: the model with the spec's rules in context, or the rule interpreter in demo mode. */
+/**
+ * Judgment steps: the model with the spec's rules in context, or the rule
+ * interpreter in demo mode. The eval bench uses the same path as shadow/live
+ * runs on purpose: the deployment gate must certify the decision procedure
+ * that will actually run.
+ */
 const judgmentConnector: Connector = async (step, ctx) => {
-  if (llmAvailable() && ctx.mode !== "eval") {
+  if (ctx.approvedDraft) {
+    return {
+      output: approvedPayload(ctx.approvedDraft),
+      summary: `Executed the approved draft for ${step.title}`,
+      simulated: ctx.mode !== "live",
+    };
+  }
+  if (llmAvailable()) {
     try {
       const rules = ctx.spec.steps
         .flatMap((s) => s.decisionRules)
@@ -130,6 +161,13 @@ const httpConnector: Connector = async (step, ctx) => {
 
 /** Everything else: a simulated system action that produces its draft. */
 const simulatedConnector: Connector = async (step, ctx) => {
+  if (ctx.approvedDraft) {
+    return {
+      output: approvedPayload(ctx.approvedDraft),
+      summary: `${step.system}: executed the approved draft`,
+      simulated: true,
+    };
+  }
   const draft = buildDraft(step, ctx);
   return {
     output: draft,
@@ -140,6 +178,7 @@ const simulatedConnector: Connector = async (step, ctx) => {
 
 /** Draft = the concrete thing this step would commit, built from context. */
 function buildDraft(step: Step, ctx: ConnectorContext): Record<string, unknown> {
+  if (ctx.approvedDraft) return approvedPayload(ctx.approvedDraft);
   const decision = Object.values(ctx.values).find((v) => "action" in v) ?? {};
   return {
     step: step.title,

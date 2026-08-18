@@ -22,7 +22,7 @@ import {
 import { parseVtt } from "./vtt";
 import { generateMap, EmptyTranscriptError } from "./mapgen";
 import { loadFixture } from "./fixture";
-import { llmAvailable, llmText } from "@/lib/llm/client";
+import { llmAvailable, llmImageText } from "@/lib/llm/client";
 
 /**
  * The Audit phase orchestrator: capture in, operating map out.
@@ -109,12 +109,14 @@ async function describeFrame(imagePath: string): Promise<string> {
     return "Frame captured. Configure ANTHROPIC_API_KEY for on-screen text extraction.";
   }
   try {
-    // Frame reading is a mechanical subtask: routed to the fast model.
-    return await llmText({
+    // The actual frame image goes to the model (fast tier: mechanical subtask).
+    // A description is only ever produced from pixels the model has seen.
+    return await llmImageText({
       tier: "fast",
       system:
-        "Describe this application screenshot for a workflow audit. Name the application, what is on screen, and transcribe any figures, IDs, amounts, or field values exactly. Two sentences.",
-      user: `Screenshot path: ${imagePath}. Describe what a screen recording frame at this moment would show.`,
+        "You are reading one frame of a screen recording for a workflow audit. Name the application, what is on screen, and transcribe any figures, IDs, amounts, or field values exactly as shown. Two sentences. If the frame is unreadable, say so.",
+      user: "Describe this frame.",
+      imagePath,
       maxTokens: 300,
     });
   } catch {

@@ -32,6 +32,8 @@ Implementation decisions made while building v1, with reasoning. Ambiguities wer
 
 15. **`fuser -k <port>/tcp` in dev notes rather than `pkill -f "next start"`** — the latter matches its own invoking shell. (Recorded because it cost a debugging cycle: a stale server holding a deleted SQLite inode served pre-seed data.)
 
+16. **Adversarial review findings, all fixed before shipping.** (a) Approved/edited gate drafts are now what the gated action executes — the plan freezes at run start, the gate computes the real proposed action side-effect-free, and connectors consume the approved payload verbatim. (b) Failure escalations distinguish approve (retry) / edit (human supplies the outcome) / reject (stop). (c) The eval bench exercises the same judgment path as shadow/live runs, so the gate certifies the procedure that will actually run. (d) Frame descriptions send actual image bytes to the model; nothing is described unseen. (e) Correction-sourced golden cases are excluded from bench scoring until labeled — otherwise each correction would permanently drag the pass rate. (f) Spoken-amount parsing handles mixed numbers ("two thousand five hundred"). (g) CSV import handles quoted fields. (h) The inbox tracks resolutions by id, not index. (i) Renaming a workflow syncs both the spec and the portfolio row.
+
 ## Known limitations (v1)
 
 - Loom URLs download via yt-dlp; Looms behind auth need a manual download + upload path (upload accepts a local file path server-side; drag-drop upload UI is v2).

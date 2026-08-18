@@ -91,10 +91,14 @@ function categorize(
 export async function runEvals(workflowId: string): Promise<EvalRunRow> {
   const workflow = getWorkflow(workflowId);
   if (!workflow?.spec) throw new Error(`Workflow ${workflowId} has no spec.`);
-  const cases = listGoldenCases(workflowId);
+  // Correction cases carry a free-text edit as their expectation, which the
+  // bench cannot grade against step outputs. They are kept for review and
+  // excluded from scoring until an operator turns them into labeled cases;
+  // scoring them would silently drag the pass rate down forever.
+  const cases = listGoldenCases(workflowId).filter((c) => c.source !== "correction");
   if (cases.length === 0) {
     throw new Error(
-      "The golden dataset is empty. Add historical examples (interview harvest or CSV import) before running the bench.",
+      "The golden dataset has no gradable cases. Add historical examples (interview harvest or CSV import) before running the bench.",
     );
   }
 

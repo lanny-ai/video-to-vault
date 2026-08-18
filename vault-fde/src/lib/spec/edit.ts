@@ -1,4 +1,4 @@
-import { getWorkflow, saveSpec } from "@/lib/db/repo";
+import { getWorkflow, saveSpec, setWorkflowTitle } from "@/lib/db/repo";
 import type { StepClassification, WorkflowSpec } from "./schema";
 
 /**
@@ -57,6 +57,8 @@ export function applySpecEdit(workflowId: string, edit: SpecEdit): WorkflowSpec 
     }
     case "set_title": {
       spec.title = edit.title;
+      // Keep the workflow row in sync so the portfolio shows the same name.
+      setWorkflowTitle(workflowId, edit.title);
       break;
     }
   }

@@ -16,6 +16,8 @@ describe("parseSpokenAmount", () => {
     expect(parseSpokenAmount("five hundred dollars")).toBe(500);
     expect(parseSpokenAmount("forty")).toBe(40);
     expect(parseSpokenAmount("two thousand")).toBe(2000);
+    expect(parseSpokenAmount("two thousand five hundred")).toBe(2500);
+    expect(parseSpokenAmount("twenty five hundred")).toBe(2500);
   });
   it("returns null when no amount", () => {
     expect(parseSpokenAmount("no numbers here")).toBeNull();

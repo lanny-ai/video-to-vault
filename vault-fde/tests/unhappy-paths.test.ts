@@ -92,7 +92,7 @@ describe("unhappy paths", () => {
   it("evals refuse to run on an empty golden dataset", async () => {
     const workflow = loadFixture("invoice-intake");
     await buildOperatingMap(workflow.id);
-    await expect(runEvals(workflow.id)).rejects.toThrow(/golden dataset is empty/i);
+    await expect(runEvals(workflow.id)).rejects.toThrow(/no gradable cases/i);
   });
 
   it("live runs require live status, live status requires shadow first", async () => {
@@ -156,6 +156,109 @@ describe("unhappy paths", () => {
     const kinds = listAuditEvents(run.id).map((e) => e.kind);
     expect(kinds).toContain("step_failed");
     expect(kinds).toContain("routed_to_human");
+  });
+
+  it("an edited gate draft is exactly what the gated step executes", async () => {
+    const workflow = await readyWorkflow();
+    await runEvals(workflow.id);
+    const spec = getWorkflow(workflow.id)!.spec!;
+    const judgment = spec.steps.find((s) => s.classification === "llm_judgment")!;
+    judgment.decisionRules.push(
+      { id: "r-services", condition: "category is services", action: "code 6300", source: "interview" },
+      { id: "r-dup", condition: "duplicate invoice", action: "request a corrected invoice", source: "interview" },
+    );
+    saveSpec(workflow.id, spec);
+    await runEvals(workflow.id);
+    deployToShadow(workflow.id);
+    setWorkflowStatus(workflow.id, "live");
+
+    const { run } = await startRun({
+      workflowId: workflow.id,
+      mode: "live",
+      runInput: {
+        vendor: "Corvid Office", invoiceNumber: "CO-903", amount: 80, dueDate: "2026-09-01",
+        hasAttachment: true, poFound: true, poAmount: 80, category: "office supplies",
+      },
+    });
+    let currentRun = getRun(run.id)!;
+    let edited = false;
+    let editedStepId = "";
+    let guard = 0;
+    while (currentRun.status === "waiting_approval" && guard < 10) {
+      const pending = listPendingApprovals().find((a) => a.runId === run.id)!;
+      if (!edited) {
+        edited = true;
+        editedStepId = pending.stepId;
+        await resolveApprovalAndContinue({
+          approvalId: pending.id,
+          status: "edited",
+          editedDraft: { note: "use net-45 terms", vendor: "Corvid Office" },
+        });
+      } else {
+        await resolveApprovalAndContinue({ approvalId: pending.id, status: "approved" });
+      }
+      currentRun = getRun(run.id)!;
+      guard += 1;
+    }
+    expect(currentRun.status).toBe("completed");
+    const values = (currentRun.context as { values: Record<string, Record<string, unknown>> }).values;
+    // The step executed the human's edit verbatim, not a rebuilt draft.
+    expect(values[editedStepId]).toEqual({ note: "use net-45 terms", vendor: "Corvid Office" });
+  });
+
+  it("approving a failure escalation retries; editing supplies the outcome by hand", async () => {
+    const workflow = await readyWorkflow();
+    const spec = getWorkflow(workflow.id)!.spec!;
+    const step = spec.steps.find((s) => s.classification === "deterministic")!;
+    step.executor = { kind: "browser", operation: "browser.click", config: {} };
+    saveSpec(workflow.id, spec);
+    setWorkflowStatus(workflow.id, "shadow");
+
+    const { run } = await startRun({
+      workflowId: workflow.id,
+      mode: "shadow",
+      runInput: {
+        vendor: "Corvid Office", invoiceNumber: "CO-904", amount: 80, dueDate: "2026-09-01",
+        hasAttachment: true, poFound: true, poAmount: 80, category: "office supplies",
+      },
+    });
+    expect(getRun(run.id)!.status).toBe("waiting_approval");
+
+    // Approve: the step retries (and fails again, since the stub still fails).
+    const first = listPendingApprovals().find((a) => a.runId === run.id)!;
+    await resolveApprovalAndContinue({ approvalId: first.id, status: "approved" });
+    const afterRetry = getRun(run.id)!;
+    expect(afterRetry.status).toBe("waiting_approval");
+    const retryEvents = listAuditEvents(run.id).filter(
+      (e) => e.kind === "step_failed" && e.stepId === step.id,
+    );
+    expect(retryEvents.length).toBeGreaterThanOrEqual(2);
+
+    // Edit: the human supplies the outcome and the run moves on.
+    const second = listPendingApprovals().find((a) => a.runId === run.id)!;
+    await resolveApprovalAndContinue({
+      approvalId: second.id,
+      status: "edited",
+      editedDraft: { doneByHand: true },
+    });
+    const values = (getRun(run.id)!.context as { values: Record<string, Record<string, unknown>> })
+      .values;
+    expect(values[step.id]).toEqual({ doneByHand: true });
+  });
+
+  it("correction cases are kept but excluded from bench scoring", async () => {
+    const workflow = await readyWorkflow();
+    const before = await runEvals(workflow.id);
+    const { addGoldenCase } = await import("@/lib/db/repo");
+    addGoldenCase({
+      workflowId: workflow.id,
+      name: "Correction from a run",
+      input: { vendor: "X" },
+      expected: { correction: "use net-45" },
+      source: "correction",
+    });
+    const after = await runEvals(workflow.id);
+    expect(after.total).toBe(before.total);
   });
 
   it("parses VTT and tolerates malformed cues", () => {

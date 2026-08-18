@@ -1,4 +1,4 @@
-import { compileSpec, type ExecNode, type ExecutablePlan } from "@/lib/compiler";
+import { compileSpec, type ExecNode } from "@/lib/compiler";
 import { resolveConnector, ConnectorError, type ConnectorContext } from "@/lib/connectors";
 import type { Step, WorkflowSpec } from "@/lib/spec/schema";
 import {
@@ -30,19 +30,56 @@ export const GRADUATION_THRESHOLD = 10;
 export const EVAL_PASS_GATE = 0.9;
 export const MIN_GOLDEN_CASES = 20;
 
+interface StoredPlanNode {
+  kind: ExecNode["kind"];
+  stepId: string;
+}
+
 interface RunContext {
   input: Record<string, unknown>;
   values: Record<string, Record<string, unknown>>;
+  /**
+   * The plan is frozen at run start (node kinds + step ids) so spec edits made
+   * while a run is in flight can never shift the resume point or drop a gate.
+   */
+  plan?: StoredPlanNode[];
   /** Set while a live run waits at a gate. */
   pendingApprovalId?: string;
+  /** Set when the wait is a failure escalation rather than a gate. */
+  pendingFailureStepId?: string;
+  /** Human-approved (possibly edited) drafts, consumed by the gated action. */
+  approvedDrafts?: Record<string, Record<string, unknown>>;
   [key: string]: unknown;
+}
+
+/** Rebuild executable nodes from the frozen plan against the current spec. */
+function planFromContext(spec: WorkflowSpec, context: RunContext): ExecNode[] | null {
+  if (!context.plan) return null;
+  const nodes: ExecNode[] = [];
+  for (const stored of context.plan) {
+    const step = spec.steps.find((s) => s.id === stored.stepId);
+    if (!step) return null;
+    if (stored.kind === "approval_gate") {
+      nodes.push({
+        kind: "approval_gate",
+        step,
+        reason: "This step commits something outside the system. A person approves the draft before it executes.",
+      });
+    } else if (stored.kind === "human_task") {
+      nodes.push({ kind: "human_task", step });
+    } else {
+      nodes.push({ kind: "action", step });
+    }
+  }
+  return nodes;
 }
 
 export class DeploymentGateError extends Error {}
 
 /** Deployment gate: evals earn the right to run. */
 export function deploymentGate(workflowId: string): { ready: boolean; reason: string } {
-  const cases = listGoldenCases(workflowId);
+  // Only gradable cases count toward the gate; corrections await labeling.
+  const cases = listGoldenCases(workflowId).filter((c) => c.source !== "correction");
   if (cases.length < MIN_GOLDEN_CASES) {
     return {
       ready: false,
@@ -101,7 +138,11 @@ export async function startRun(input: {
   const run = createRun({
     workflowId: input.workflowId,
     mode: input.mode,
-    context: { input: input.runInput, values: {} },
+    context: {
+      input: input.runInput,
+      values: {},
+      plan: plan.nodes.map((n) => ({ kind: n.kind, stepId: n.step.id })),
+    },
   });
   addAuditEvent({
     runId: run.id,
@@ -110,7 +151,7 @@ export async function startRun(input: {
     summary: `${input.mode === "shadow" ? "Shadow" : "Live"} run started`,
     detail: { input: input.runInput },
   });
-  await executeFrom(run.id, workflow.spec, plan);
+  await executeFrom(run.id, workflow.spec);
   return { run: getRun(run.id)! };
 }
 
@@ -127,25 +168,53 @@ function skipForDecision(step: Step, values: RunContext["values"]): string | nul
   return null;
 }
 
-async function executeFrom(
-  runId: string,
-  spec: WorkflowSpec,
-  plan: ExecutablePlan,
-): Promise<void> {
+async function executeFrom(runId: string, spec: WorkflowSpec): Promise<void> {
   const run = getRun(runId);
   if (!run) throw new Error(`Run not found: ${runId}`);
   const context = run.context as unknown as RunContext;
 
-  for (let i = run.checkpointIndex; i < plan.nodes.length; i++) {
-    const node = plan.nodes[i];
+  let nodes = planFromContext(spec, context);
+  if (context.plan && !nodes) {
+    // The spec lost a step this run depends on. Refusing beats guessing.
+    updateRun(runId, { status: "failed", context: context as Record<string, unknown> });
+    addAuditEvent({
+      runId,
+      kind: "run_failed",
+      stepId: null,
+      summary: "The workflow changed while this run was in flight; a step in its plan no longer exists. Start a new run.",
+      detail: null,
+    });
+    return;
+  }
+  if (!nodes) nodes = compileSpec(spec).nodes;
+
+  for (let i = run.checkpointIndex; i < nodes.length; i++) {
+    const node = nodes[i];
     const step = node.step;
 
     if (node.kind === "approval_gate" || node.kind === "human_task") {
+      // Draft -> approve -> execute: compute the real proposed action
+      // (side-effect-free) so the human approves the actual thing, not a
+      // placeholder. Shadow-mode connectors only ever produce drafts.
+      let proposed = context.values[step.id];
+      if (!proposed && node.kind === "approval_gate") {
+        try {
+          const draftResult = await resolveConnector(step)(step, {
+            spec,
+            input: context.input,
+            values: context.values,
+            mode: "shadow",
+          });
+          proposed = draftResult.output;
+        } catch {
+          proposed = inferDraft(step, context);
+        }
+      }
       const draft = {
         step: step.title,
         system: step.system,
         input: context.input,
-        proposed: context.values[step.id] ?? inferDraft(step, context),
+        proposed: proposed ?? inferDraft(step, context),
       };
       const reasoning =
         node.kind === "human_task"
@@ -200,6 +269,8 @@ async function executeFrom(
       input: context.input,
       values: context.values,
       mode: run.mode,
+      // What the human approved (possibly edited) is what executes.
+      approvedDraft: context.approvedDrafts?.[step.id],
     };
     const connector = resolveConnector(step);
     let result;
@@ -281,9 +352,10 @@ function routeFailure(
     workflowId: spec.id,
     stepId: step.id,
     draft: { failedStep: step.title, error: message, input: context.input },
-    reasoning: `"${step.title}" failed (${category.replace("_", " ")}). A person decides how to proceed; approving retries the step, rejecting stops the run.`,
+    reasoning: `"${step.title}" failed (${category.replace("_", " ")}). A person decides how to proceed: approving retries the step, an edit supplies the step's outcome by hand, rejecting stops the run.`,
   });
   context.pendingApprovalId = approval.id;
+  context.pendingFailureStepId = step.id;
   addAuditEvent({
     runId,
     kind: "routed_to_human",
@@ -367,6 +439,8 @@ export async function resolveApprovalAndContinue(input: ResolveInput): Promise<A
   const context = run.context as unknown as RunContext;
   if (run.status === "waiting_approval" && context.pendingApprovalId === approval.id) {
     if (input.status === "rejected") {
+      delete context.pendingApprovalId;
+      delete context.pendingFailureStepId;
       updateRun(run.id, { status: "aborted", context: context as Record<string, unknown> });
       addAuditEvent({
         runId: run.id,
@@ -375,19 +449,40 @@ export async function resolveApprovalAndContinue(input: ResolveInput): Promise<A
         summary: "Run stopped after rejection",
         detail: null,
       });
-    } else {
-      if (step) {
-        context.values[step.id] = (input.editedDraft ?? approval.draft) as Record<string, unknown>;
-      }
-      delete context.pendingApprovalId;
-      updateRun(run.id, {
-        status: "running",
-        checkpointIndex: run.checkpointIndex + 1,
-        context: context as Record<string, unknown>,
-      });
-      const plan = compileSpec(spec);
-      await executeFrom(run.id, spec, plan);
+      return resolved;
     }
+
+    delete context.pendingApprovalId;
+    const waitingNode = context.plan?.[run.checkpointIndex];
+    let nextCheckpoint = run.checkpointIndex + 1;
+
+    if (context.pendingFailureStepId === approval.stepId) {
+      // Failure escalation: approve retries the failed step; an edit supplies
+      // the step's outcome by hand and moves on.
+      delete context.pendingFailureStepId;
+      if (input.status === "edited" && input.editedDraft && step) {
+        context.values[step.id] = input.editedDraft;
+      } else {
+        nextCheckpoint = run.checkpointIndex;
+      }
+    } else if (waitingNode?.kind === "human_task" && step) {
+      // The approval is the step itself; its resolution is the step's output.
+      context.values[step.id] = (input.editedDraft ?? approval.draft) as Record<string, unknown>;
+    } else if (step) {
+      // Approval gate: the approved (possibly edited) draft is what the
+      // following action node executes. The connector consumes it verbatim.
+      context.approvedDrafts = {
+        ...(context.approvedDrafts ?? {}),
+        [step.id]: (input.editedDraft ?? approval.draft) as Record<string, unknown>,
+      };
+    }
+
+    updateRun(run.id, {
+      status: "running",
+      checkpointIndex: nextCheckpoint,
+      context: context as Record<string, unknown>,
+    });
+    await executeFrom(run.id, spec);
   }
   return resolved;
 }

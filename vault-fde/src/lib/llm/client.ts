@@ -137,3 +137,38 @@ export async function llmText(req: Omit<JsonRequest<string>, "schema">): Promise
   });
   return extractText(response);
 }
+
+/**
+ * Vision: the actual image bytes go to the model. Never describe an image the
+ * model has not seen.
+ */
+export async function llmImageText(req: {
+  tier: ModelTier;
+  system: string;
+  user: string;
+  imagePath: string;
+  maxTokens?: number;
+}): Promise<string> {
+  const client = getClient();
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const data = fs.readFileSync(req.imagePath).toString("base64");
+  const ext = path.extname(req.imagePath).toLowerCase();
+  const mediaType =
+    ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : ext === ".gif" ? "image/gif" : "image/jpeg";
+  const response = await client.messages.create({
+    model: MODELS[req.tier],
+    max_tokens: req.maxTokens ?? 1000,
+    system: req.system,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data } },
+          { type: "text", text: req.user },
+        ],
+      },
+    ],
+  });
+  return extractText(response);
+}

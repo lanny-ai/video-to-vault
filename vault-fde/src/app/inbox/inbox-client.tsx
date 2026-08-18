@@ -24,15 +24,17 @@ interface Item {
 
 export function InboxClient({ items }: { items: Item[] }) {
   const router = useRouter();
-  const [index, setIndex] = useState(0);
+  // Track resolutions by id, not by index: the server list also shrinks on
+  // refresh, and an index would double-advance past unresolved items.
+  const [resolvedIds, setResolvedIds] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resolvedCount, setResolvedCount] = useState(0);
 
-  const remaining = items.slice(index);
+  const remaining = items.filter((item) => !resolvedIds.has(item.id));
   const current = remaining[0];
+  const resolvedCount = resolvedIds.size;
 
   if (!current) {
     return (
@@ -61,8 +63,7 @@ export function InboxClient({ items }: { items: Item[] }) {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "That did not save.");
-      setResolvedCount((n) => n + 1);
-      setIndex((i) => i + 1);
+      setResolvedIds((prev) => new Set(prev).add(current.id));
       setEditing(false);
       setEditText("");
       router.refresh();

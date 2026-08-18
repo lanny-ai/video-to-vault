@@ -141,13 +141,18 @@ export function parseSpokenAmount(text: string): number | null {
   }
   const words = text.toLowerCase().match(/\b(?:one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty|forty|fifty|hundred|thousand)\b(?:[\s-](?:one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty|forty|fifty|hundred|thousand)\b)*/);
   if (!words) return null;
+  // "hundred" multiplies the current group; "thousand" closes it, so
+  // "two thousand five hundred" is 2*1000 + 5*100, not (2*1000+5)*100.
   let total = 0;
   let current = 0;
   for (const word of words[0].split(/[\s-]+/)) {
     const value = WORD_NUMBERS[word];
     if (value === undefined) continue;
-    if (value === 100 || value === 1000) {
-      current = (current || 1) * value;
+    if (value === 100) {
+      current = (current || 1) * 100;
+    } else if (value === 1000) {
+      total += (current || 1) * 1000;
+      current = 0;
     } else {
       current += value;
     }

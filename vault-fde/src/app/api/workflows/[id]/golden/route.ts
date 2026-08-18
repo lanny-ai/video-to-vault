@@ -57,14 +57,45 @@ function coerce(value: string): unknown {
   return trimmed;
 }
 
+/** RFC-style CSV line split: quoted fields may contain commas and "" escapes. */
+function splitCsvLine(line: string): string[] {
+  const cells: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      cells.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  cells.push(current);
+  return cells;
+}
+
 function parseCsv(
   text: string,
 ): { name: string; input: Record<string, unknown>; expected: Record<string, unknown> }[] {
   const lines = text.replace(/\r/g, "").split("\n").filter((l) => l.trim());
   if (lines.length < 2) throw new Error("CSV needs a header row and at least one data row.");
-  const headers = lines[0].split(",").map((h) => h.trim());
+  const headers = splitCsvLine(lines[0]).map((h) => h.trim());
   return lines.slice(1).map((line, i) => {
-    const cells = line.split(",");
+    const cells = splitCsvLine(line);
     const input: Record<string, unknown> = {};
     const expected: Record<string, unknown> = {};
     let name = `Imported case ${i + 1}`;
