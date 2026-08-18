@@ -41,8 +41,11 @@ const EXTERNAL_SIGNALS = [
 ];
 
 export function suggestClassification(description: string): StepClassification {
-  if (HUMAN_SIGNALS.some((r) => r.test(description))) return "human_approval";
+  // Judgment wins over human signals: a step that mentions routing to a person
+  // for sign-off is usually a judgment/verification step with an approval
+  // rule attached, not itself an approval step.
   if (JUDGMENT_SIGNALS.some((r) => r.test(description))) return "llm_judgment";
+  if (HUMAN_SIGNALS.some((r) => r.test(description))) return "human_approval";
   return "deterministic";
 }
 

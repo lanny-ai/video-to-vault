@@ -213,12 +213,18 @@ function extractRules(segment: TranscriptSegment, stepId: string): DecisionRule[
       push(`amount over ${threshold[1].trim()}`, threshold[2], sentence);
       continue;
     }
-    // "If the amounts do not match exactly, I flag it."
-    const conditional = sentence.match(
-      /\b(if|when|unless|once)\b\s+(.{3,90}?)[,.]\s*(.{3,140})/i,
-    );
+    // "If the amounts do not match exactly, I flag it." — and the same
+    // sentence without the comma, which is how people actually talk.
+    const conditional =
+      sentence.match(/\b(if|when|unless|once)\b\s+(.{3,90}?)[,.]\s*(.{3,140})/i) ??
+      sentence.match(/\b(if|when|unless|once)\b\s+(.{3,60}?)\s+((?:I|we)\s.{2,140})/i);
     if (conditional) {
       push(`${conditional[1].toLowerCase()} ${conditional[2].trim()}`, conditional[3], sentence);
+      continue;
+    }
+    // Category mappings: "Office supplies go to 6200, freight goes to 6450."
+    for (const mapping of sentence.matchAll(/\b([A-Za-z][\w ]{2,24}?)\s+go(?:es)?\s+to\s+(\d{3,5})\b/g)) {
+      push(`category is ${mapping[1].trim().toLowerCase()}`, `code ${mapping[2]}`, sentence);
     }
   }
   return rules;
@@ -324,6 +330,23 @@ export function generateMapDeterministic(input: MapgenInput): WorkflowSpec {
       });
     }
   });
+
+  // The judgment lives at the decision point: the step carrying the most
+  // decision rules becomes the workflow's judgment step, executed by the
+  // model (or the rule interpreter in demo mode).
+  const candidates = steps.filter((s) => s.classification !== "human_approval");
+  const decisionStep = candidates.reduce<Step | null>(
+    (best, s) =>
+      s.decisionRules.length > 0 && s.decisionRules.length > (best?.decisionRules.length ?? 0)
+        ? s
+        : best,
+    null,
+  );
+  if (decisionStep) {
+    decisionStep.classification = "llm_judgment";
+    decisionStep.executor = { kind: "llm", operation: "llm.judge", config: {} };
+    decisionStep.failureModes = defaultFailureModes(decisionStep);
+  }
 
   // Intake variance: the first segment usually describes how work arrives.
   const intakeText = transcript[0].text;
