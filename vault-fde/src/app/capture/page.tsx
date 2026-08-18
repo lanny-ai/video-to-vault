@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { Card } from "@/components/ui";
+import { ProcessingTicker } from "@/components/processing-ticker";
 
 /**
  * Capture. The drop zone is the primary path: it works for every video the
@@ -148,7 +149,7 @@ export default function CapturePage() {
               <p className="mt-2 text-sm text-muted">Uploading, {phase.percent}%</p>
             </div>
           ) : phase.name === "processing" ? (
-            <p className="text-sm text-muted">{phase.label}</p>
+            <ProcessingTicker />
           ) : (
             <>
               <p className="text-[17px] font-medium text-ink">Drop your video here</p>
