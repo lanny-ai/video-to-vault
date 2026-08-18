@@ -178,8 +178,16 @@ function titleFromText(text: string): string {
     .replace(/\bI\b/g, "")
     .trim();
   const sentence = cleaned.split(/[.!?]/)[0].trim();
-  const words = sentence.split(/\s+/).slice(0, 8).join(" ");
+  const words = sentence.split(/\s+/).slice(0, 8).join(" ").replace(/[,:;\s]+$/, "");
   return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** Cut a quote at a word boundary instead of mid-word. */
+function snippet(text: string, max = 160): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${cut.slice(0, lastSpace > 80 ? lastSpace : max)}…`;
 }
 
 function nearestFrame(frames: FrameRow[], atSec: number): FrameRow | null {
@@ -252,7 +260,7 @@ export function generateMapDeterministic(input: MapgenInput): WorkflowSpec {
       {
         timestampSec: segment.startSec,
         frameId: frame?.id,
-        transcriptSnippet: segment.text.slice(0, 160),
+        transcriptSnippet: snippet(segment.text),
       },
     ];
     const { system, operation } = detectSystem(segment.text);
@@ -309,7 +317,7 @@ export function generateMapDeterministic(input: MapgenInput): WorkflowSpec {
           question: hedge.question(match[0]),
           proposedAnswer:
             "Treat the stated behavior as the default and route anything that deviates to a person for review.",
-          evidence: { timestampSec: segment.startSec, transcriptSnippet: segment.text.slice(0, 160) },
+          evidence: { timestampSec: segment.startSec, transcriptSnippet: snippet(segment.text) },
           harvestExamples: false,
         });
       }
@@ -325,7 +333,7 @@ export function generateMapDeterministic(input: MapgenInput): WorkflowSpec {
         stepId,
         question: `You mentioned a threshold of ${amount !== null ? `$${amount}` : `"${threshold[1].trim()}"`}. Is that a fixed number, and does it ever change?`,
         proposedAnswer: `The threshold is fixed at ${amount !== null ? `$${amount}` : threshold[1].trim()} and applies to every vendor.`,
-        evidence: { timestampSec: segment.startSec, transcriptSnippet: segment.text.slice(0, 160) },
+        evidence: { timestampSec: segment.startSec, transcriptSnippet: snippet(segment.text) },
         harvestExamples: false,
       });
     }
@@ -375,7 +383,7 @@ export function generateMapDeterministic(input: MapgenInput): WorkflowSpec {
       "Intake is where most exceptions live. Can you share 10 real examples of what actually arrives, including the odd ones?",
     proposedAnswer:
       "The variants mentioned in the recording cover the common cases; real examples will surface the rest.",
-    evidence: { timestampSec: transcript[0].startSec, transcriptSnippet: intakeText.slice(0, 160) },
+    evidence: { timestampSec: transcript[0].startSec, transcriptSnippet: snippet(intakeText) },
     harvestExamples: true,
   });
 

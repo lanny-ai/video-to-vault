@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { ZodType } from "zod";
+import type { ZodType, ZodTypeDef } from "zod";
 
 /**
  * Thin wrapper over the Anthropic SDK.
@@ -43,7 +43,8 @@ export interface JsonRequest<T> {
   tier: ModelTier;
   system: string;
   user: string;
-  schema: ZodType<T>;
+  /** Input type is unconstrained so schemas with .default() fields infer their output type. */
+  schema: ZodType<T, ZodTypeDef, unknown>;
   maxTokens?: number;
 }
 

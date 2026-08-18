@@ -245,8 +245,9 @@ async function executeFrom(
 }
 
 function inferDraft(step: Step, context: RunContext): Record<string, unknown> {
+  // The draft already carries the run input; repeat only the decision here.
   const decision = Object.values(context.values).find((v) => typeof v.action === "string");
-  return { wouldDo: step.goal, basedOn: decision ?? context.input };
+  return decision ? { wouldDo: step.goal, decision } : { wouldDo: step.goal };
 }
 
 /** Explicit failure behavior: the step's failure modes decide, defaulting to a human. */

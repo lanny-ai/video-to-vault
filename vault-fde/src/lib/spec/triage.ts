@@ -32,12 +32,14 @@ const HUMAN_SIGNALS = [
   /threshold/i,
 ];
 
+// Verb-object patterns, not bare nouns: "reply to the vendor" commits
+// something external; merely mentioning "email" or "invoice" does not.
 const EXTERNAL_SIGNALS = [
-  /send|email|notify|reply|post|publish/i,
-  /pay|payment|invoice|transfer|refund/i,
-  /create .*(record|ticket|task|order)/i,
-  /updat(e|ing) .*(crm|erp|system|record)/i,
-  /delete|remove|cancel/i,
+  /\b(send|sends|sent|reply|replies|notify|notifies|post|publish)\b/i,
+  /\b(pay|pays|refund|transfer)\b/i,
+  /\bcreate[s]? (?:a |the )?\w*\s?(bill|record|ticket|task|order|entry)\b/i,
+  /\b(enter|update|write)[s]? .{0,30}\b(netsuite|salesforce|crm|erp|system of record)\b/i,
+  /\b(delete|cancel)s?\b/i,
 ];
 
 export function suggestClassification(description: string): StepClassification {
