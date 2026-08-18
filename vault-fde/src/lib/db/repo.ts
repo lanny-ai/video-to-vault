@@ -16,7 +16,7 @@ export interface WorkflowRow {
   id: string;
   title: string;
   status: WorkflowStatus;
-  sourceKind: "loom" | "youtube" | "upload" | "fixture";
+  sourceKind: "loom" | "youtube" | "drive" | "upload" | "fixture";
   sourceRef: string;
   spec: WorkflowSpec | null;
   createdAt: string;

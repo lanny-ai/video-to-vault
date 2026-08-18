@@ -21,10 +21,12 @@ To process a fresh copy of the demo recording yourself: **New recording** → `f
 
 ### Real recordings
 
-Processing a real Loom/YouTube/upload requires:
+The reliable path is the **drop zone**: download your recording (Loom's Download button works for every Loom you own, private or not) and drop the file on the capture page. Uploads stream to disk, so long recordings are fine. Links are the secondary, best-effort path: public YouTube, public Loom, and Google Drive files shared as "anyone with the link" (the large-file virus-scan interstitial is handled). Private links fail with a guided recovery, never raw tool output.
+
+Processing real video requires:
 
 ```bash
-brew install yt-dlp ffmpeg     # frames and download
+brew install yt-dlp ffmpeg     # link fetching and frames (yt-dlp only needed for links)
 pip install openai-whisper     # transcription when no captions exist
 ```
 
@@ -40,7 +42,7 @@ Without a key the app runs in **demo mode**: deterministic map generation and a 
 
 | Surface | What it does |
 | --- | --- |
-| **Capture** | Paste a link. A 30-second coaching card improves the raw material. |
+| **Capture** | Drop a video file (primary) or paste a link (best-effort). Guided recovery on every failure. A 30-second coaching card improves the raw material. |
 | **Review** | The operating map with receipts: every step links to its moment in the recording. Classification chips (`deterministic / AI judgment / human decision`), decision rules, failure modes, redaction flags, go/no-go recommendation. |
 | **Interview** | One question at a time, never more. Voice button on every question. The AI leads with its best guess; you confirm or correct. |
 | **Test bench** | Golden dataset (CSV import: `name,input_*,expected_*` columns) run against the compiled workflow. Categorized failure report says what to fix. 90% over 20+ cases opens the deployment gate. |

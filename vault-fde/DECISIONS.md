@@ -34,9 +34,12 @@ Implementation decisions made while building v1, with reasoning. Ambiguities wer
 
 16. **Adversarial review findings, all fixed before shipping.** (a) Approved/edited gate drafts are now what the gated action executes — the plan freezes at run start, the gate computes the real proposed action side-effect-free, and connectors consume the approved payload verbatim. (b) Failure escalations distinguish approve (retry) / edit (human supplies the outcome) / reject (stop). (c) The eval bench exercises the same judgment path as shadow/live runs, so the gate certifies the procedure that will actually run. (d) Frame descriptions send actual image bytes to the model; nothing is described unseen. (e) Correction-sourced golden cases are excluded from bench scoring until labeled — otherwise each correction would permanently drag the pass rate. (f) Spoken-amount parsing handles mixed numbers ("two thousand five hundred"). (g) CSV import handles quoted fields. (h) The inbox tracks resolutions by id, not index. (i) Renaming a workflow syncs both the spec and the portfolio row.
 
+17. **Capture is upload-first.** Field testing on day one showed the URL path failing exactly as predicted: private Looms cannot be fetched by yt-dlp under any circumstances, and Drive links fail without public sharing. The drop zone is now the primary capture path (streaming PUT of the raw body straight to disk, XHR progress, 4 GB cap, extension allowlist, traversal-proof `upload://` refs). Links are labeled best-effort; every capture failure carries a `CaptureErrorCode` and a one-gesture recovery hint that the UI renders next to the drop zone. Google Drive links are fetched without OAuth for "anyone with the link" files, including the large-file virus-scan confirm form; sign-in walls get a guided error, not a scrape attempt. Failed link captures archive their placeholder workflow row so the portfolio never shows dead entries.
+
 ## Known limitations (v1)
 
-- Loom URLs download via yt-dlp; Looms behind auth need a manual download + upload path (upload accepts a local file path server-side; drag-drop upload UI is v2).
+- Link fetching for Loom is inherently best-effort (yt-dlp scraping); the guided fallback is download-and-drop. An in-app screen recorder (`getDisplayMedia`) is the planned v2 fix that removes the problem class entirely.
+- Google Drive support covers public "anyone with the link" files only; OAuth/Drive-picker integration is v2.
 - Multi-recording diffing (constants vs variables, multi-performer variance) is designed in the spec (`derivedFrom`, intake variants) but the diff tooling is not built.
 - Browser-automation executor is a stub that routes to a human.
 - No auth/multi-tenancy; this is a single-team deployment.

@@ -18,27 +18,49 @@ import {
   extractSceneFrames,
   whisperTranscribe,
   toolAvailable,
+  MediaToolMissingError,
 } from "./media";
 import { parseVtt } from "./vtt";
 import { generateMap, EmptyTranscriptError } from "./mapgen";
 import { loadFixture } from "./fixture";
+import { downloadDriveFile } from "./drive";
+import {
+  CaptureError,
+  classifyDownloadFailure,
+  detectSourceKind,
+  isVideoFilename,
+  resolveUploadRef,
+} from "./sources";
 import { llmAvailable, llmImageText } from "@/lib/llm/client";
+
+export { detectSourceKind, CaptureError } from "./sources";
 
 /**
  * The Audit phase orchestrator: capture in, operating map out.
- * Every stage fails with a specific, human-readable error; a workflow is never
- * left in a lying state (status only advances after the artifact exists).
+ * Every stage fails with a specific, guided error (see sources.ts); a workflow
+ * is never left in a lying state (status only advances after the artifact
+ * exists).
  */
 
 export interface CaptureRequest {
-  source: string; // URL, upload path, or fixture://name
+  source: string; // URL, upload:// ref, local path, or fixture://name
 }
 
-export function detectSourceKind(source: string): WorkflowRow["sourceKind"] {
-  if (source.startsWith("fixture://")) return "fixture";
-  if (/loom\.com/i.test(source)) return "loom";
-  if (/youtube\.com|youtu\.be/i.test(source)) return "youtube";
-  return "upload";
+/** Normalize any ingest failure into a guided CaptureError. */
+function toCaptureError(err: unknown): CaptureError {
+  if (err instanceof CaptureError) return err;
+  if (err instanceof MediaToolMissingError) {
+    return new CaptureError(
+      "tool_missing",
+      err.message,
+      "Once it is installed, drop the file again and processing picks up from there.",
+    );
+  }
+  return new CaptureError(
+    "empty_video",
+    err instanceof Error ? err.message : String(err),
+    "If this recording plays fine locally, re-export it as mp4 and drop it again.",
+  );
 }
 
 export async function captureRecording(req: CaptureRequest): Promise<WorkflowRow> {
@@ -49,27 +71,85 @@ export async function captureRecording(req: CaptureRequest): Promise<WorkflowRow
   }
 
   if (kind === "upload") {
-    if (!fs.existsSync(req.source)) {
-      throw new Error(`Upload not found at ${req.source}.`);
+    const filePath = req.source.startsWith("upload://")
+      ? resolveUploadRef(req.source)
+      : req.source;
+    if (!fs.existsSync(filePath)) {
+      throw new CaptureError(
+        "upload_missing",
+        `No file found at ${filePath}.`,
+        "Drop the video file on the capture page instead of typing a path.",
+      );
+    }
+    if (!isVideoFilename(filePath)) {
+      throw new CaptureError(
+        "upload_bad_type",
+        `${filePath} does not look like a video file.`,
+        "Supported formats: mp4, mov, webm, mkv, m4v, avi.",
+      );
     }
     const workflow = createWorkflow({
       title: "Uploaded recording",
       sourceKind: "upload",
       sourceRef: req.source,
     });
-    await ingestVideo(workflow.id, req.source, null);
+    try {
+      await ingestVideo(workflow.id, filePath, null);
+    } catch (err) {
+      setWorkflowStatus(workflow.id, "archived");
+      throw toCaptureError(err);
+    }
     return getWorkflow(workflow.id)!;
   }
 
-  // Remote recording (Loom / YouTube).
+  if (kind === "drive") {
+    const workflow = createWorkflow({
+      title: "Drive recording",
+      sourceKind: "drive",
+      sourceRef: req.source,
+    });
+    try {
+      const videoPath = await downloadDriveFile(req.source, workflow.id);
+      await ingestVideo(workflow.id, videoPath, null);
+    } catch (err) {
+      setWorkflowStatus(workflow.id, "archived");
+      throw toCaptureError(err);
+    }
+    return getWorkflow(workflow.id)!;
+  }
+
+  // Remote recording (Loom / YouTube): yt-dlp is best-effort by nature, so its
+  // failures get classified into guided recovery instead of surfacing stderr.
   const workflow = createWorkflow({
     title: "Remote recording",
     sourceKind: kind,
     sourceRef: req.source,
   });
-  const videoPath = downloadVideo(req.source, workflow.id);
-  const subsPath = downloadSubtitles(req.source, workflow.id);
-  await ingestVideo(workflow.id, videoPath, subsPath);
+  let videoPath: string;
+  let subsPath: string | null;
+  try {
+    videoPath = downloadVideo(req.source, workflow.id);
+    subsPath = downloadSubtitles(req.source, workflow.id);
+  } catch (err) {
+    setWorkflowStatus(workflow.id, "archived");
+    if (err instanceof MediaToolMissingError) {
+      throw new CaptureError(
+        "tool_missing",
+        err.message,
+        "Or skip the link: download the video yourself and drop the file here.",
+      );
+    }
+    throw classifyDownloadFailure(
+      kind === "loom" ? "loom" : "youtube",
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+  try {
+    await ingestVideo(workflow.id, videoPath, subsPath);
+  } catch (err) {
+    setWorkflowStatus(workflow.id, "archived");
+    throw toCaptureError(err);
+  }
   return getWorkflow(workflow.id)!;
 }
 

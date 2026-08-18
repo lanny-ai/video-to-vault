@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
 /** Small, restrained primitives. One accent; everything else is quiet. */
 
@@ -52,9 +52,16 @@ export function ClassificationChip({ classification }: { classification: string 
   );
 }
 
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function Card({
+  children,
+  className = "",
+  ...rest
+}: { children: ReactNode; className?: string } & HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`rounded-card bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.04)] ${className}`}>
+    <div
+      className={`rounded-card bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.04)] ${className}`}
+      {...rest}
+    >
       {children}
     </div>
   );
