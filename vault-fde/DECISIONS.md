@@ -38,9 +38,12 @@ Implementation decisions made while building v1, with reasoning. Ambiguities wer
 
 18. **Live capture progress is a polled in-memory registry, not streaming.** Field testing showed "Watching the recording…" is indistinguishable from a hang during multi-minute pipelines. The pipeline now reports its real position (fetching → frames with count → reading screen i of N → transcribing → mapping) into an in-memory registry keyed by a client-generated id; the capture page polls it every 1.2s and renders the truth line above the ambient ticker, with a real progress bar during the frame-reading loop. In-memory is correct for the single-process deployment this app targets; entries expire after 15 minutes so abandoned captures never leak. No fake progress: every line comes from the pipeline's actual position.
 
+19. **In-app screen recorder via `getDisplayMedia` + MediaRecorder, mic required.** Recording in the browser removes the Loom download-and-drop dance entirely: screen video and mic narration combine into one MediaRecorder stream (vp9/opus webm preferred, mp4 for Safari), and Stop hands the file to the exact upload → pipeline path a dropped file takes — one code path, no special cases. The mic is a hard requirement with a guided error, not an option: a silent recording produces no decision rules and therefore no map worth reviewing. Cancelling the share picker exits quietly; ending the share from the browser's own UI counts as Stop; unmount releases all tracks. This is also the foundation for instrumented capture (tab URLs, click events) later.
+
 ## Known limitations (v1)
 
-- Link fetching for Loom is inherently best-effort (yt-dlp scraping); the guided fallback is download-and-drop. An in-app screen recorder (`getDisplayMedia`) is the planned v2 fix that removes the problem class entirely.
+- Link fetching for Loom is inherently best-effort (yt-dlp scraping); the guided fallbacks are the in-app recorder and download-and-drop.
+- The in-app recorder captures pixels and voice only; instrumented capture (tab URLs, DOM events alongside the video) is v2.
 - Google Drive support covers public "anyone with the link" files only; OAuth/Drive-picker integration is v2.
 - Multi-recording diffing (constants vs variables, multi-performer variance) is designed in the spec (`derivedFrom`, intake variants) but the diff tooling is not built.
 - Browser-automation executor is a stub that routes to a human.

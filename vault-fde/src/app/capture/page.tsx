@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui";
 import { ProcessingTicker } from "@/components/processing-ticker";
+import { ScreenRecorder } from "@/components/screen-recorder";
 
 /**
  * Capture. The drop zone is the primary path: it works for every video the
@@ -151,9 +152,12 @@ export default function CapturePage() {
       <div className="text-center">
         <h1 className="text-[28px] font-semibold tracking-tight">New recording</h1>
         <p className="mt-1 text-[15px] text-muted">
-          Record the process once, narrating as you go. Then bring the video here.
+          Walk through the process once, narrating as you go. Record it here, or bring a
+          video.
         </p>
       </div>
+
+      <ScreenRecorder disabled={busy} onRecorded={uploadFile} />
 
       {phase.name === "error" && (
         <Card className="border border-fail/20 bg-fail-soft p-5">

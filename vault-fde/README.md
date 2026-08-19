@@ -21,7 +21,9 @@ To process a fresh copy of the demo recording yourself: **New recording** → `f
 
 ### Real recordings
 
-The reliable path is the **drop zone**: download your recording (Loom's Download button works for every Loom you own, private or not) and drop the file on the capture page. Uploads stream to disk, so long recordings are fine. Links are the secondary, best-effort path: public YouTube, public Loom, and Google Drive files shared as "anyone with the link" (the large-file virus-scan interstitial is handled). Private links fail with a guided recovery, never raw tool output.
+The easiest path is the **in-app recorder**: click Record on the capture page, narrate your process (screen and voice, mic required — the narration is the gold), stop, and the map starts building. No Loom, no download, no upload step.
+
+The second path is the **drop zone**: download any recording (Loom's Download button works for every Loom you own, private or not) and drop the file. Uploads stream to disk, so long recordings are fine. Links are the third, best-effort path: public YouTube, public Loom, and Google Drive files shared as "anyone with the link" (the large-file virus-scan interstitial is handled). Private links fail with a guided recovery, never raw tool output.
 
 Processing real video requires:
 
@@ -42,7 +44,7 @@ Without a key the app runs in **demo mode**: deterministic map generation and a 
 
 | Surface | What it does |
 | --- | --- |
-| **Capture** | Drop a video file (primary) or paste a link (best-effort). Guided recovery on every failure. A 30-second coaching card improves the raw material. |
+| **Capture** | Record in the browser (screen + voice), drop a video file, or paste a link (best-effort). Live stage progress while processing. Guided recovery on every failure. A 30-second coaching card improves the raw material. |
 | **Review** | The operating map with receipts: every step links to its moment in the recording. Classification chips (`deterministic / AI judgment / human decision`), decision rules, failure modes, redaction flags, go/no-go recommendation. |
 | **Interview** | One question at a time, never more. Voice button on every question. The AI leads with its best guess; you confirm or correct. |
 | **Test bench** | Golden dataset (CSV import: `name,input_*,expected_*` columns) run against the compiled workflow. Categorized failure report says what to fix. 90% over 20+ cases opens the deployment gate. |
