@@ -1,8 +1,8 @@
 {
-  "name": "vault-fde",
+  "name": "nightmagic",
   "version": "0.1.0",
   "private": true,
-  "description": "Vault FDE: turn a screen recording of a business process into a reviewed, evaluated, progressively deployed automated workflow.",
+  "description": "Nightmagic: turn a screen recording of a business process into a reviewed, evaluated, progressively deployed automated workflow.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

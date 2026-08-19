@@ -5,7 +5,7 @@ import { initDb } from "@/lib/db";
 import { listPendingApprovals } from "@/lib/db/repo";
 
 export const metadata: Metadata = {
-  title: "Vault FDE",
+  title: "Nightmagic",
   description:
     "Record a process once. Get a reviewed, evaluated, progressively deployed workflow.",
 };
@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="no-print sticky top-0 z-10 border-b border-hairline bg-surface/80 backdrop-blur-xl">
           <nav className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
             <Link href="/" className="text-[15px] font-semibold tracking-tight text-ink">
-              Vault FDE
+              Nightmagic
             </Link>
             <div className="flex items-center gap-6">
               <Link href="/" className="text-sm text-muted transition-colors hover:text-ink">

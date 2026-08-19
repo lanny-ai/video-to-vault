@@ -56,7 +56,7 @@ export async function generateMap(input: MapgenInput): Promise<WorkflowSpec> {
 export class EmptyTranscriptError extends Error {
   constructor() {
     super(
-      "The recording has no transcript. Vault FDE needs narration to extract the business rules; re-record with the coaching card, speaking through each step.",
+      "The recording has no transcript. Nightmagic needs narration to extract the business rules; re-record with the coaching card, speaking through each step.",
     );
   }
 }

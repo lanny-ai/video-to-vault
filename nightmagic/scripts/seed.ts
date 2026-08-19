@@ -22,7 +22,7 @@ import { deployToShadow, resolveApprovalAndContinue, startRun } from "@/lib/runt
 async function main() {
   initDb();
   if (listWorkflows().some((w) => w.sourceKind === "fixture")) {
-    console.log("Seed data already present; nothing to do. Delete data/vault-fde.db to reseed.");
+    console.log("Seed data already present; nothing to do. Delete data/nightmagic.db to reseed.");
     return;
   }
 

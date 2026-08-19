@@ -1,4 +1,4 @@
-# Product Spec: Vault FDE
+# Product Spec: Nightmagic
 
 ## What this is
 

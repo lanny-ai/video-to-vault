@@ -15,8 +15,8 @@ import type { ZodType, ZodTypeDef } from "zod";
 export type ModelTier = "primary" | "fast";
 
 const MODELS: Record<ModelTier, string> = {
-  primary: process.env.VAULT_FDE_MODEL_PRIMARY || "claude-fable-5",
-  fast: process.env.VAULT_FDE_MODEL_FAST || "claude-haiku-4-5",
+  primary: process.env.NIGHTMAGIC_MODEL_PRIMARY || process.env.VAULT_FDE_MODEL_PRIMARY || "claude-fable-5",
+  fast: process.env.NIGHTMAGIC_MODEL_FAST || process.env.VAULT_FDE_MODEL_FAST || "claude-haiku-4-5",
 };
 
 let cachedClient: Anthropic | null = null;

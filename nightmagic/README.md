@@ -1,15 +1,15 @@
-# Vault FDE
+# Nightmagic — nightmagic.ai
 
-Record a business process once, narrating as you go. Vault FDE turns the recording into a reviewed, evaluated, progressively deployed automated workflow, following the forward deployed engineer loop: **Audit → Evals → Deployment**, where each phase earns the right to the next.
+Record a business process once, narrating as you go. Nightmagic turns the recording into a reviewed, evaluated, progressively deployed automated workflow, following the forward deployed engineer loop: **Audit → Evals → Deployment**, where each phase earns the right to the next.
 
 ## The idea
 
-A screen recording captures intent, not just clicks. The narration carries the business rules that never appear on screen ("anything over five hundred dollars has to go to Sarah"). Vault FDE extracts those rules into an **operating map**, closes the gaps with a one-question-at-a-time **interview**, proves reliability on a **test bench** of historical examples, and deploys behind a **trust ladder**: shadow mode first, human approval on every external action, and per-step graduation to autonomy only after a clean approval record.
+A screen recording captures intent, not just clicks. The narration carries the business rules that never appear on screen ("anything over five hundred dollars has to go to Sarah"). Nightmagic extracts those rules into an **operating map**, closes the gaps with a one-question-at-a-time **interview**, proves reliability on a **test bench** of historical examples, and deploys behind a **trust ladder**: shadow mode first, human approval on every external action, and per-step graduation to autonomy only after a clean approval record.
 
 ## Quick start
 
 ```bash
-cd vault-fde
+cd nightmagic
 npm install
 npm run db:seed     # loads a complete demo workflow (invoice intake)
 npm run dev         # http://localhost:3000
@@ -64,7 +64,7 @@ npm run check      # all three
 npm run build      # production build
 ```
 
-Data lives in `./data/vault-fde.db` (SQLite). Delete it to start over.
+Data lives in `./data/nightmagic.db` (SQLite). Delete it to start over.
 
 ## Documentation
 

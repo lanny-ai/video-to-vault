@@ -86,7 +86,7 @@ const MIGRATIONS: string[] = [
 
 export function dataDir(): string {
   return (
-    process.env.VAULT_FDE_DATA_DIR || path.join(process.cwd(), "data")
+    process.env.NIGHTMAGIC_DATA_DIR || process.env.VAULT_FDE_DATA_DIR || path.join(process.cwd(), "data")
   );
 }
 
@@ -96,7 +96,7 @@ export function initDb(filename?: string): Database.Database {
   if (!target) {
     const dir = dataDir();
     fs.mkdirSync(dir, { recursive: true });
-    target = path.join(dir, "vault-fde.db");
+    target = path.join(dir, "nightmagic.db");
   }
   db = new Database(target);
   db.pragma("journal_mode = WAL");
