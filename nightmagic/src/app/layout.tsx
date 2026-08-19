@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { initDb } from "@/lib/db";
 import { listPendingApprovals } from "@/lib/db/repo";
+import { AUTH_COOKIE, isAuthed } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Nightmagic",
@@ -12,8 +14,22 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   initDb();
+  // The login page renders bare: no nav, no counts, nothing leaked pre-auth.
+  const authed = await isAuthed(
+    process.env.NIGHTMAGIC_PASSWORD,
+    cookies().get(AUTH_COOKIE)?.value,
+  );
+  if (!authed) {
+    return (
+      <html lang="en">
+        <body className="font-sans antialiased">
+          <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
+        </body>
+      </html>
+    );
+  }
   let pendingCount = 0;
   try {
     pendingCount = listPendingApprovals().length;

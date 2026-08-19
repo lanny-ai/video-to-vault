@@ -40,6 +40,8 @@ Implementation decisions made while building v1, with reasoning. Ambiguities wer
 
 19. **In-app screen recorder via `getDisplayMedia` + MediaRecorder, mic required.** Recording in the browser removes the Loom download-and-drop dance entirely: screen video and mic narration combine into one MediaRecorder stream (vp9/opus webm preferred, mp4 for Safari), and Stop hands the file to the exact upload → pipeline path a dropped file takes — one code path, no special cases. The mic is a hard requirement with a guided error, not an option: a silent recording produces no decision rules and therefore no map worth reviewing. Cancelling the share picker exits quietly; ending the share from the browser's own UI counts as Stop; unmount releases all tracks. This is also the foundation for instrumented capture (tab URLs, click events) later.
 
+20. **Deployment targets container hosting; the gate is a shared password.** The app is one persistent process with SQLite on disk and shell-outs to ffmpeg/yt-dlp/whisper, so serverless (Vercel, Workers) would mean a re-architecture: Postgres, blob storage, hosted transcription, a queue. Deferred until multi-tenant scale demands it. The Dockerfile bakes the whole toolchain plus the whisper base model into the image (large image, instant first capture). `NIGHTMAGIC_PASSWORD` enables a middleware gate over every page and API route with a salted-hash cookie; unset, local dev is untouched. The unauthenticated layout renders bare so nothing (including pending-approval counts) leaks pre-login. Sized deliberately for one team; real auth precedes any multi-tenant use.
+
 ## Known limitations (v1)
 
 - Link fetching for Loom is inherently best-effort (yt-dlp scraping); the guided fallbacks are the in-app recorder and download-and-drop.

@@ -52,6 +52,10 @@ Without a key the app runs in **demo mode**: deterministic map generation and a 
 | **Run timeline** | Every run readable as a story, with a complete audit trail. |
 | **Reports** | The Sprint Report (sellable audit deliverable) and the Defend Pack (engineer and VP versions), print-ready. |
 
+## Deploying
+
+Nightmagic needs container hosting with a persistent volume (Railway, Render, Fly.io), not serverless (Vercel/Workers). The Dockerfile bakes in ffmpeg, yt-dlp, and whisper; `NIGHTMAGIC_PASSWORD` gates the whole app. Full steps: `docs/DEPLOY.md`. The static nightmagic.ai launch page deploys separately via `site/deploy.sh`.
+
 ## Commands
 
 ```bash
