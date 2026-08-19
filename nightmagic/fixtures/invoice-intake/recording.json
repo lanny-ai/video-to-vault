@@ -1,0 +1,63 @@
+{
+  "title": "Invoice intake and entry",
+  "sourceRef": "fixture://invoice-intake",
+  "durationSec": 92,
+  "transcript": [
+    {
+      "startSec": 0,
+      "endSec": 10,
+      "text": "Every morning I open our AP inbox. Invoices come in from about forty vendors, and honestly no two look alike. Most are PDFs, some are just photos, and a few vendors paste the invoice right into the email body."
+    },
+    {
+      "startSec": 10,
+      "endSec": 22,
+      "text": "First I open the email and download the attachment. If there is no attachment I check whether the invoice is in the body. When I see it is from Meridian, I know the second page is just their terms, so I ignore it."
+    },
+    {
+      "startSec": 22,
+      "endSec": 40,
+      "text": "Then I pull out the vendor name, invoice number, amount, and due date, and I key those into our tracking spreadsheet. Usually the amount is on the first page, but for freight invoices it is at the bottom of page two."
+    },
+    {
+      "startSec": 40,
+      "endSec": 55,
+      "text": "Next I check the PO number in NetSuite. I search by vendor and match the amount. If the amounts do not match exactly I flag it. Anything over five hundred dollars has to go to Sarah for sign-off before I can enter it."
+    },
+    {
+      "startSec": 55,
+      "endSec": 75,
+      "text": "Once it matches, I create the bill in NetSuite: vendor, invoice number, amount, due date, and the GL code. Office supplies go to 6200, freight goes to 6450. If I am not sure, I ask in the AP channel."
+    },
+    {
+      "startSec": 75,
+      "endSec": 92,
+      "text": "Finally I reply to the vendor confirming we received it and it is scheduled, then I drag the email into the Processed folder. If something is wrong, missing PO or a weird amount, I reply asking for a corrected invoice instead."
+    }
+  ],
+  "frames": [
+    {
+      "timestampSec": 0,
+      "description": "Gmail inbox labeled AP Inbox. Twelve unread emails from vendors including Meridian Supply Co, Atlas Freight, Corvid Office. Subject lines vary: 'Invoice #8841', 'INV-2201 attached', 'March statement'."
+    },
+    {
+      "timestampSec": 12,
+      "description": "An open email from Meridian Supply Co with PDF attachment meridian-8841.pdf. Body says 'Please find attached invoice 8841 for $412.80, due April 15.'"
+    },
+    {
+      "timestampSec": 24,
+      "description": "Google Sheets tracking spreadsheet titled AP Tracker with columns Vendor, Invoice #, Amount, Due date, Status. A new row being typed: Meridian Supply Co, 8841, 412.80, 2026-04-15."
+    },
+    {
+      "timestampSec": 42,
+      "description": "NetSuite purchase order search. Query: vendor 'Meridian Supply Co'. Result PO-3320, open amount $412.80, matches invoice amount."
+    },
+    {
+      "timestampSec": 58,
+      "description": "NetSuite vendor bill form. Fields filled: Vendor Meridian Supply Co, Reference 8841, Amount 412.80, Due 4/15/2026, GL account 6200 Office Supplies."
+    },
+    {
+      "timestampSec": 78,
+      "description": "Gmail reply draft to Meridian Supply Co: 'Received invoice 8841, scheduled for payment by the due date.' Cursor hovering over Send."
+    }
+  ]
+}

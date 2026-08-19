@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens. One accent. Everything else is warm gray.
+   Light is the primary design; dark mirrors it via prefers-color-scheme. */
+:root {
+  --ink: #1d1d1f;
+  --muted: #6e6e73;
+  --faint: #aeaeb2;
+  --canvas: #f5f5f7;
+  --surface: #ffffff;
+  --raised: #fbfbfd;
+  --hairline: rgba(0, 0, 0, 0.09);
+  --accent: #0071e3;
+  --accent-soft: rgba(0, 113, 227, 0.08);
+  --pass: #3d7a4e;
+  --pass-soft: rgba(61, 122, 78, 0.1);
+  --fail: #b0463c;
+  --fail-soft: rgba(176, 70, 60, 0.09);
+  --warn: #8a6d1d;
+  --warn-soft: rgba(138, 109, 29, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f5f5f7;
+    --muted: #98989d;
+    --faint: #636366;
+    --canvas: #000000;
+    --surface: #1c1c1e;
+    --raised: #2c2c2e;
+    --hairline: rgba(255, 255, 255, 0.12);
+    --accent: #2997ff;
+    --accent-soft: rgba(41, 151, 255, 0.14);
+    --pass: #6fbf85;
+    --pass-soft: rgba(111, 191, 133, 0.13);
+    --fail: #e08579;
+    --fail-soft: rgba(224, 133, 121, 0.12);
+    --warn: #d4b45a;
+    --warn-soft: rgba(212, 180, 90, 0.12);
+  }
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
