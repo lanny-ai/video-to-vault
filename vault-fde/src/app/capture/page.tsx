@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui";
 import { ProcessingTicker } from "@/components/processing-ticker";
 
@@ -15,26 +15,68 @@ import { ProcessingTicker } from "@/components/processing-ticker";
 type Phase =
   | { name: "idle" }
   | { name: "uploading"; percent: number; fileName: string }
-  | { name: "processing"; label: string }
+  | { name: "processing" }
   | { name: "error"; message: string; hint: string | null };
 
+interface LiveProgress {
+  stage: string | null;
+  detail?: string;
+  current?: number;
+  total?: number;
+}
+
 const ACCEPT = ".mp4,.mov,.webm,.mkv,.m4v,.avi";
+
+function newProgressId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export default function CapturePage() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>({ name: "idle" });
+  const [progress, setProgress] = useState<LiveProgress | null>(null);
   const [link, setLink] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const progressIdRef = useRef<string | null>(null);
 
   const busy = phase.name === "uploading" || phase.name === "processing";
 
+  // Poll the pipeline's real position while processing. The stage line is the
+  // truth; the ticker underneath is the personality.
+  useEffect(() => {
+    if (phase.name !== "processing") {
+      setProgress(null);
+      return;
+    }
+    const id = progressIdRef.current;
+    if (!id) return;
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/capture/progress?id=${id}`);
+        if (!response.ok) return;
+        const data: LiveProgress = await response.json();
+        if (!cancelled && data.stage) setProgress(data);
+      } catch {
+        // Polling is best-effort; the capture request itself carries the result.
+      }
+    }, 1200);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [phase.name]);
+
   async function buildMap(source: string) {
-    setPhase({ name: "processing", label: "Watching the recording…" });
+    const progressId = newProgressId();
+    progressIdRef.current = progressId;
+    setPhase({ name: "processing" });
     const response = await fetch("/api/capture", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ source }),
+      body: JSON.stringify({ source, progressId }),
     });
     const data = await response.json();
     if (!response.ok) {
@@ -149,7 +191,20 @@ export default function CapturePage() {
               <p className="mt-2 text-sm text-muted">Uploading, {phase.percent}%</p>
             </div>
           ) : phase.name === "processing" ? (
-            <ProcessingTicker />
+            <div className="flex w-full flex-col items-center gap-5">
+              <p className="min-h-[1.5rem] text-[15px] font-medium text-ink">
+                {progress?.detail ?? "Watching the recording…"}
+              </p>
+              {progress?.current != null && progress?.total != null && progress.total > 0 && (
+                <div className="h-1 w-full max-w-xs overflow-hidden rounded-full bg-canvas">
+                  <div
+                    className="h-full rounded-full bg-accent transition-all duration-500 ease-calm"
+                    style={{ width: `${Math.round((progress.current / progress.total) * 100)}%` }}
+                  />
+                </div>
+              )}
+              <ProcessingTicker />
+            </div>
           ) : (
             <>
               <p className="text-[17px] font-medium text-ink">Drop your video here</p>

@@ -32,6 +32,7 @@ import {
   resolveUploadRef,
 } from "./sources";
 import { llmAvailable, llmImageText } from "@/lib/llm/client";
+import { reportProgress } from "./progress";
 
 export { detectSourceKind, CaptureError } from "./sources";
 
@@ -44,6 +45,8 @@ export { detectSourceKind, CaptureError } from "./sources";
 
 export interface CaptureRequest {
   source: string; // URL, upload:// ref, local path, or fixture://name
+  /** Optional client-generated id for live progress polling. */
+  progressId?: string;
 }
 
 /** Normalize any ingest failure into a guided CaptureError. */
@@ -65,8 +68,10 @@ function toCaptureError(err: unknown): CaptureError {
 
 export async function captureRecording(req: CaptureRequest): Promise<WorkflowRow> {
   const kind = detectSourceKind(req.source);
+  const pid = req.progressId;
 
   if (kind === "fixture") {
+    reportProgress(pid, "fetching", "Loading the demo recording…");
     return loadFixture(req.source.replace("fixture://", ""));
   }
 
@@ -94,7 +99,7 @@ export async function captureRecording(req: CaptureRequest): Promise<WorkflowRow
       sourceRef: req.source,
     });
     try {
-      await ingestVideo(workflow.id, filePath, null);
+      await ingestVideo(workflow.id, filePath, null, pid);
     } catch (err) {
       setWorkflowStatus(workflow.id, "archived");
       throw toCaptureError(err);
@@ -109,8 +114,9 @@ export async function captureRecording(req: CaptureRequest): Promise<WorkflowRow
       sourceRef: req.source,
     });
     try {
+      reportProgress(pid, "fetching", "Fetching the video from Google Drive…");
       const videoPath = await downloadDriveFile(req.source, workflow.id);
-      await ingestVideo(workflow.id, videoPath, null);
+      await ingestVideo(workflow.id, videoPath, null, pid);
     } catch (err) {
       setWorkflowStatus(workflow.id, "archived");
       throw toCaptureError(err);
@@ -128,6 +134,7 @@ export async function captureRecording(req: CaptureRequest): Promise<WorkflowRow
   let videoPath: string;
   let subsPath: string | null;
   try {
+    reportProgress(pid, "fetching", "Fetching the recording…");
     videoPath = downloadVideo(req.source, workflow.id);
     subsPath = downloadSubtitles(req.source, workflow.id);
   } catch (err) {
@@ -145,7 +152,7 @@ export async function captureRecording(req: CaptureRequest): Promise<WorkflowRow
     );
   }
   try {
-    await ingestVideo(workflow.id, videoPath, subsPath);
+    await ingestVideo(workflow.id, videoPath, subsPath, pid);
   } catch (err) {
     setWorkflowStatus(workflow.id, "archived");
     throw toCaptureError(err);
@@ -157,10 +164,19 @@ async function ingestVideo(
   workflowId: string,
   videoPath: string,
   subsPath: string | null,
+  pid?: string,
 ): Promise<void> {
   // Frames: scene-change extraction, one frame per screen change.
+  reportProgress(pid, "frames", "Extracting every screen change…");
   const frames = extractSceneFrames(videoPath, workflowId);
-  for (const frame of frames) {
+  reportProgress(pid, "frames", `Found ${frames.length} screens`, {
+    total: frames.length,
+  });
+  for (const [index, frame] of frames.entries()) {
+    reportProgress(pid, "reading", `Reading screen ${index + 1} of ${frames.length}`, {
+      current: index + 1,
+      total: frames.length,
+    });
     const description = await describeFrame(frame.path);
     addFrame({
       workflowId,
@@ -173,9 +189,15 @@ async function ingestVideo(
   // Transcript: captions when present, whisper otherwise.
   let segments: { startSec: number; endSec: number; text: string }[] = [];
   if (subsPath && fs.existsSync(subsPath)) {
+    reportProgress(pid, "transcribing", "Reading the captions…");
     segments = parseVtt(fs.readFileSync(subsPath, "utf8"));
   }
   if (segments.length === 0 && toolAvailable("whisper")) {
+    reportProgress(
+      pid,
+      "transcribing",
+      "Transcribing the audio… (the longest step, worth the wait)",
+    );
     const audioPath = extractAudio(videoPath, workflowId);
     segments = whisperTranscribe(audioPath);
   }
@@ -205,13 +227,17 @@ async function describeFrame(imagePath: string): Promise<string> {
 }
 
 /** Generate the operating map for a captured workflow. */
-export async function buildOperatingMap(workflowId: string): Promise<WorkflowRow> {
+export async function buildOperatingMap(
+  workflowId: string,
+  progressId?: string,
+): Promise<WorkflowRow> {
   const workflow = getWorkflow(workflowId);
   if (!workflow) throw new Error(`Workflow not found: ${workflowId}`);
   const transcript = listTranscript(workflowId);
   const frames = listFrames(workflowId);
   if (transcript.length === 0) throw new EmptyTranscriptError();
 
+  reportProgress(progressId, "mapping", "Drafting the operating map…");
   const spec = await generateMap({
     workflowId,
     title: workflow.title,
@@ -219,7 +245,8 @@ export async function buildOperatingMap(workflowId: string): Promise<WorkflowRow
     frames,
   });
   saveSpec(workflowId, spec);
-  if (workflow.title === "Remote recording" || workflow.title === "Uploaded recording") {
+  const placeholderTitles = ["Remote recording", "Uploaded recording", "Drive recording"];
+  if (placeholderTitles.includes(workflow.title)) {
     setWorkflowTitle(workflowId, spec.title);
   }
   setWorkflowStatus(
