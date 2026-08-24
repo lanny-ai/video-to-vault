@@ -1,0 +1,6 @@
+# Build output and dependencies (may appear when switching between branches)
+.next/
+node_modules/
+next-env.d.ts
+*.tsbuildinfo
+.DS_Store
