@@ -11,8 +11,11 @@ The launch page for nightmagic.ai is separate and static; see `site/deploy.sh`.
 ## Railway (recommended)
 
 1. **Create the project.** In Railway: New Project → Deploy from GitHub repo →
-   pick this repository. Set the service's **root directory** to `nightmagic/`
-   so Railway finds the Dockerfile and `railway.json`.
+   pick this repository. Railway needs to find the `Dockerfile` and
+   `railway.json`, so set the service's **root directory** to wherever they
+   live: leave it at the repository root in the standalone `nightmagic` repo,
+   or set it to `nightmagic/` if you are deploying from a checkout where the
+   app sits in that subdirectory.
 
 2. **Attach a volume.** Service → Volumes → mount at `/data`. This holds the
    SQLite database, uploads, and extracted media. Without it, every deploy
