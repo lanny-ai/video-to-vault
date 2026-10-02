@@ -17,7 +17,22 @@ DOMAIN="nightmagic.ai"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Create the Pages project if it does not exist yet, then deploy this folder.
-npx wrangler pages project create "$PROJECT" --production-branch main 2>/dev/null || true
+# "already exists" is the one error worth ignoring here; anything else (above
+# all an auth failure) is surfaced, because a hidden 10000 looks like a broken
+# deploy rather than a token missing Account -> Cloudflare Pages -> Edit.
+if ! CREATE_OUT=$(npx wrangler pages project create "$PROJECT" --production-branch main 2>&1); then
+  if printf '%s' "$CREATE_OUT" | grep -qiE 'already (exists|in use)|8000007'; then
+    echo "==> Pages project '$PROJECT' already exists — continuing"
+  else
+    printf '%s\n' "$CREATE_OUT" >&2
+    echo >&2
+    echo "Could not create the Pages project. If that is an authentication" >&2
+    echo "error [code: 10000], the token is missing the Account -> Cloudflare" >&2
+    echo "Pages -> Edit permission. Zone DNS alone is not enough." >&2
+    exit 1
+  fi
+fi
+
 npx wrangler pages deploy "$DIR" --project-name "$PROJECT" --branch main
 
 # Attach the custom domain (idempotent; Cloudflare adds the DNS record when the
