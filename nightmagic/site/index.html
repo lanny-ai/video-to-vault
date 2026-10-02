@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nightmagic</title>
+<meta name="description" content="Record a process once. Wake up to it done.">
+<style>
+  /* Launch page: deliberately one look — night. Single accent, typography-led. */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --ink: #f5f5f7;
+    --muted: #98989d;
+    --faint: #636366;
+    --canvas: #050507;
+    --accent: #2997ff;
+    --hairline: rgba(255, 255, 255, 0.12);
+  }
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Inter, Roboto, "Helvetica Neue", sans-serif;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+  }
+  main { max-width: 42rem; text-align: center; }
+  .mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--ink);
+  }
+  .mark .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+  }
+  h1 {
+    margin-top: 2.75rem;
+    font-size: clamp(2.4rem, 7vw, 4.25rem);
+    line-height: 1.06;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+  }
+  h1 .quiet { color: var(--muted); }
+  .sub {
+    margin: 1.75rem auto 0;
+    max-width: 34rem;
+    font-size: clamp(1rem, 2.5vw, 1.2rem);
+    line-height: 1.6;
+    color: var(--muted);
+  }
+  .sub strong { color: var(--ink); font-weight: 550; }
+  .soon {
+    display: inline-block;
+    margin-top: 3rem;
+    padding: 0.5rem 1.1rem;
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  footer {
+    position: fixed;
+    bottom: 1.5rem;
+    font-size: 0.78rem;
+    color: var(--faint);
+  }
+</style>
+</head>
+<body>
+  <main>
+    <span class="mark"><span class="dot"></span>Nightmagic</span>
+    <h1>Record it once.<br><span class="quiet">Wake up to it done.</span></h1>
+    <p class="sub">
+      Walk through a business process one time, narrating as you go.
+      Nightmagic turns the recording into a working automation —
+      <strong>mapped with receipts, tested against your real examples, and
+      trusted only as it earns it.</strong>
+    </p>
+    <span class="soon">Coming soon</span>
+  </main>
+  <footer>An AI Momentum Labs product</footer>
+</body>
+</html>

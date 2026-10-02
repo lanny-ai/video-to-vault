@@ -2,6 +2,8 @@
 
 Private Claude Code plugin marketplace for AI Momentum Labs Build Room members.
 
+> **New:** [Vault FDE](vault-fde/) — a web application that turns a narrated screen recording of a business process into a reviewed, evaluated, progressively deployed automated workflow (Audit → Evals → Deployment). See `vault-fde/README.md` for the quick start.
+
 ## Two Plugins
 
 ### /watch-to-vault (Full Treatment)
